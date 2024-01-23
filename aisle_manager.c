@@ -50,6 +50,10 @@
 // ------------------------------------------------------------------------------------------------
 
 #include "test_util.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <limits.h>
 
 #define NUM_SPACES 10
 
@@ -117,10 +121,16 @@ unsigned short get_spaces(unsigned long aisle, int index) {
 // Alternative solution w/shifting
 unsigned long set_section(unsigned long aisle, int index, unsigned short new_section) {
   // TODO: Implement this function
-  unsigned long mask = ~(SECTION_MASK << (16 * index));
-  aisle = aisle & mask;
-  aisle = aisle | ((unsigned long)new_section << (16 * index));
-  return aisle;
+  
+  int shift_amount = index * 16;
+
+    // Clear the bits of the section we want to change
+    aisle &= ~(SECTION_MASK << shift_amount);
+
+    // Set the new section
+    aisle |= (new_section << shift_amount);
+
+    return aisle;
 }
 
 // Given an aisle, a section index, and a short representing a 
@@ -147,12 +157,14 @@ unsigned long set_section(unsigned long aisle, int index, unsigned short new_sec
 // Can assume the index is a valid index (0-3 inclusive)
 unsigned long set_id(unsigned long aisle, int index, unsigned short new_id) {
 // TODO: Implement this function
-  if (new_id > ((1 << NUM_SPACES) - 1)) {
-    return aisle;
-  }
-  unsigned short section = get_section(aisle, index);
-  section = (section & SPACES_MASK) | (new_id << NUM_SPACES);
-  return set_section(aisle, index, section);
+  // Check if the new id fits in 6 bits
+    // Clear the id of the section
+  aisle = aisle & ID_MASK;
+    // Set the id of the section to the new id
+  aisle = aisle | ((unsigned long)new_id << (6 * index));
+  
+  // Return the updated aisle
+  return aisle;
 }
 
 // Given an aisle, a section index, and a short representing a 
@@ -167,12 +179,17 @@ unsigned long set_id(unsigned long aisle, int index, unsigned short new_id) {
 //
 // Can assume the index is a valid index (0-3 inclusive)
 unsigned long set_spaces(unsigned long aisle, int index, unsigned short new_spaces) {
-if (new_spaces > ((1 << NUM_SPACES) - 1)) {
+  // Check if the new spaces pattern fits in 10 bits
+    if (new_spaces >> 10 == 0) {
+        // Create a mask to clear the spaces of the section
+        unsigned long mask = ~(0x3FF << (10 * index)); // Update the mask value to 0x3FF
+        // Clear the spaces of the section
+        aisle = aisle & mask;
+        // Set the spaces of the section to the new spaces pattern
+        aisle = aisle | ((unsigned long)new_spaces << (10 * index)); // Update the shift amount to 10
+    }
+    // Return the updated aisle
     return aisle;
-  }
-  unsigned short section = get_section(aisle, index);
-  section = (section & ID_MASK) | new_spaces;
-  return set_section(aisle, index, section);
 }
 
 // Given an aisle and a section index.
