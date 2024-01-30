@@ -120,17 +120,25 @@ unsigned short get_spaces(unsigned long aisle, int index) {
 
 // Alternative solution w/shifting
 unsigned long set_section(unsigned long aisle, int index, unsigned short new_section) {
-  // TODO: Implement this function
-  
-  int shift_amount = index * 16;
+  unsigned long section_mask = SECTION_MASK;
+  switch (index) {
+    case 0:
+      section_mask = section_mask << 0;
+      break;
+    case 1:
+      section_mask = section_mask << 16;
+      break;
+    case 2:
+      section_mask = section_mask << 32;
+      break;
+    case 3:
+      section_mask = section_mask << 48;
+      break;
+  }
+  aisle = aisle & ~section_mask;
+  aisle = aisle | ((unsigned long)new_section << (16 * index));
+  return aisle;
 
-    // Clear the bits of the section we want to change
-    aisle &= ~(SECTION_MASK << shift_amount);
-
-    // Set the new section
-    aisle |= (new_section << shift_amount);
-
-    return aisle;
 }
 
 // Given an aisle, a section index, and a short representing a 
@@ -156,12 +164,20 @@ unsigned long set_section(unsigned long aisle, int index, unsigned short new_sec
 //
 // Can assume the index is a valid index (0-3 inclusive)
 unsigned long set_id(unsigned long aisle, int index, unsigned short new_id) {
-// TODO: Implement this function
   // Check if the new id fits in 6 bits
-    // Clear the id of the section
-  aisle = aisle & ID_MASK;
-    // Set the id of the section to the new id
-  aisle = aisle | ((unsigned long)new_id << (6 * index));
+  if (new_id > 63) {
+    return aisle;
+  }
+  new_id = new_id << NUM_SPACES;
+  
+  // Create a mask to clear the id of the section
+  unsigned long mask = ID_MASK; // Update the mask value to 0x3F
+  mask = mask << (16 * index);
+  // Clear the id of the section
+  aisle = aisle & ~mask;
+  
+  // Set the id of the section to the new id pattern
+  aisle = aisle | ((unsigned long)new_id << (16 * index));
   
   // Return the updated aisle
   return aisle;
@@ -179,17 +195,25 @@ unsigned long set_id(unsigned long aisle, int index, unsigned short new_id) {
 //
 // Can assume the index is a valid index (0-3 inclusive)
 unsigned long set_spaces(unsigned long aisle, int index, unsigned short new_spaces) {
-  // Check if the new spaces pattern fits in 10 bits
-    if (new_spaces >> 10 == 0) {
-        // Create a mask to clear the spaces of the section
-        unsigned long mask = ~(0x3FF << (10 * index)); // Update the mask value to 0x3FF
-        // Clear the spaces of the section
-        aisle = aisle & mask;
-        // Set the spaces of the section to the new spaces pattern
-        aisle = aisle | ((unsigned long)new_spaces << (10 * index)); // Update the shift amount to 10
-    }
-    // Return the updated aisle
+  // Check if the new spaces fit in 10 bits
+  if (new_spaces > 1023) {
     return aisle;
+  }
+  
+  
+  // Create a mask to clear the spaces of the section
+  unsigned long mask = SPACES_MASK; // Update the mask value to 0x3FF
+  
+  mask = mask << (16 * index);
+  
+  // Clear the spaces of the section
+  aisle = aisle & ~mask;
+  
+  // Set the spaces of the section to the new spaces pattern
+  aisle = aisle | ((unsigned long)new_spaces << (16 * index));
+  
+  // Return the updated aisle
+  return aisle;
 }
 
 // Given an aisle and a section index.
@@ -199,43 +223,17 @@ unsigned long set_spaces(unsigned long aisle, int index, unsigned short new_spac
 //
 // Can assume the index is a valid index (0-3 inclusive)
 unsigned short num_items(unsigned long aisle, int index) {
-// TODO: Implement this function
-  return 0;
+  int num_items = 0;
+  unsigned short spaces = get_spaces(aisle, index);
+  for (int i = 0; i < NUM_SPACES; i++) {
+    if (spaces & 1) {
+      num_items++;
+    }
+    spaces = spaces >> 1;
+  }
+  return num_items;
+  
 }
-
-
-// Given an aisle, a section index, and the desired
-// number of items to add.
-//
-// Add at most the given number of items to the section at the given index in the
-// given aisle. Items should be added to the least significant spaces possible.
-// If a given n is larger than or equal to the number of empty spaces in the 
-// section, then the section should appear full after the method finishes.
-// 
-// Returns the updated aisle.
-//
-// Can assume the index is a valid index (0-3 inclusive)
-unsigned long add_items(unsigned long aisle, int index, int n) { 
-// TODO: Implement this function
-  return 0;
-}
-
-// Given an aisle, a section index, and the desired
-// number of items to remove.
-//
-// Remove at most the given number of items from the section at the given index in the
-// given aisle. Items should be removed from the least significant spaces possible.
-// If a given n is larger than or equal to the number of items in the 
-// section, then the section should appear empty after the method finishes.
-//
-// Returns the updated aisle.
-//
-// Can assume the index is a valid index (0-3 inclusive)
-unsigned long remove_items(unsigned long aisle, int index, int n) {
-// TODO: Implement this function
-  return 0;
-}
-
 // Given an aisle, a section index, and a space index.
 //
 // Toggle the item in the given space index of the section at 
@@ -249,9 +247,73 @@ unsigned long remove_items(unsigned long aisle, int index, int n) {
 // Can assume the section index is a valid index (0-3 inclusive)
 // Can assume the spaces index is a valid index (0-9 inclusive)
 unsigned long toggle_space(unsigned long aisle, int section_index, int space_index) {
-// TODO: Implement this function
-  return 0;
+  unsigned short space = get_spaces(aisle, section_index);
+  unsigned short mask = 1 << space_index;
+  space = space ^ mask;
+  aisle = set_spaces(aisle, section_index, space);
+  return aisle;
 }
+
+  // Given an aisle, a section index, and the desired
+  // number of items to add.
+  //
+  // Add at most the given number of items to the section at the given index in the
+  // given aisle. Items should be added to the least significant spaces possible.
+  // If a given n is larger than or equal to the number of empty spaces in the 
+  // section, then the section should appear full after the method finishes.
+  // 
+  // Returns the updated aisle.
+  //
+  // Can assume the index is a valid index (0-3 inclusive)
+  unsigned long add_items(unsigned long aisle, int index, int n) { 
+    
+    int spaces = 0;
+    short itemCount = num_items(aisle, index);
+    short space = get_spaces(aisle, index);
+    unsigned short mask = SPACES_MASK;
+    if (n + itemCount >= NUM_SPACES) {
+      return set_spaces(aisle, index, mask);
+    }
+    while (num_items(aisle, index) < (n + itemCount)) {
+      if ((space & 0b1) != 1) {
+        aisle = toggle_space(aisle, index, spaces); 
+      }
+      space = space >> 1;
+      spaces++;
+    }
+    return aisle;
+  }
+
+// Given an aisle, a section index, and the desired
+// number of items to remove.
+//
+// Remove at most the given number of items from the section at the given index in the
+// given aisle. Items should be removed from the least significant spaces possible.
+// If a given n is larger than or equal to the number of items in the 
+// section, then the section should appear empty after the method finishes.
+//
+// Returns the updated aisle.
+//
+// Can assume the index is a valid index (0-3 inclusive)
+unsigned long remove_items(unsigned long aisle, int index, int n) {
+  int spaces = 0;
+  short itemCount = num_items(aisle, index);
+  short space = get_spaces(aisle, index);
+  unsigned short mask = SPACES_MASK;
+  if (n >= itemCount) {
+    return set_spaces(aisle, index, 0);
+  }
+  while (num_items(aisle, index) > (itemCount - n)) {
+    if ((space & 0b1) == 1) {
+      aisle = toggle_space(aisle, index, spaces); 
+    }
+    space = space >> 1;
+    spaces++;
+  }
+  return aisle;
+}
+
+
 
 // Given an aisle, a section index, and a number
 // of slots to rotate by.
@@ -268,9 +330,27 @@ unsigned long toggle_space(unsigned long aisle, int section_index, int space_ind
 // NOTE: do not assume n < NUM_SPACES 
 // (hint: think about what rotating by a value >= NUM_SPACES is equivalent to)
 unsigned long rotate_items_left(unsigned long aisle, int index, int n) {
-// TODO: Implement this function
-  return 0;
+  if (n >= NUM_SPACES) {
+    n = n % NUM_SPACES;
+  }
+  unsigned short spaces = get_spaces(aisle, index);
+  unsigned short mask = SPACES_MASK;
+  for(int i = NUM_SPACES-n; i < NUM_SPACES; i++) {
+    mask = mask | (1 << i);
+    
+  }
+  unsigned short temp = spaces & mask;
+  spaces = spaces << n;
+  mask = mask >> (10-n);
+  spaces = spaces & ~mask;
+  temp = temp >> (NUM_SPACES - n);
+  spaces = spaces | temp;
+  spaces = spaces & SPACES_MASK;
+  aisle = set_spaces(aisle, index, spaces);
+  return aisle;
+
 }
+
 
 // Given an aisle, a section index, and a number
 // of slots to rotate by.
@@ -287,7 +367,23 @@ unsigned long rotate_items_left(unsigned long aisle, int index, int n) {
 // NOTE: do not assume n < NUM_SPACES 
 // (hint: think about what rotating by a value >= NUM_SPACES is equivalent to)
 unsigned long rotate_items_right(unsigned long aisle, int index, int n) {
-// TODO: Implement this function
-  return 0;
+  if (n >= NUM_SPACES) {
+    n = n % NUM_SPACES;
+  }
+  unsigned short spaces = get_spaces(aisle, index);
+  unsigned short mask = SPACES_MASK;
+  for(int i = 0; i < n; i++) {
+    mask = mask | (1 << i);
+    
+  }
+  unsigned short temp = spaces & mask;
+  spaces = spaces >> n;
+  mask = mask << (10-n);
+  spaces = spaces & ~mask;
+  temp = temp << (NUM_SPACES - n);
+  spaces = spaces | temp;
+  spaces = spaces & SPACES_MASK;
+  aisle = set_spaces(aisle, index, spaces);
+  return aisle;
 }
 
