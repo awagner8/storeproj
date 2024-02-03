@@ -35,7 +35,14 @@ int stockroom[NUM_ITEMS];
  * before moving onto the next section.
  */
 void refill_from_stockroom() {
-  // TODO: implement this function
+  for (int aisleIndex = 0; aisleIndex < NUM_AISLES; aisleIndex++) {
+    for (int sectionIndex = 0; sectionIndex < SECTIONS_PER_AISLE; sectionIndex++) {
+      while (stockroom[get_id(aisles[aisleIndex], sectionIndex)] > 0 && num_items(aisles[aisleIndex], sectionIndex) < 10) {
+        aisles[aisleIndex] = add_items(aisles[aisleIndex], sectionIndex, 1);
+        --stockroom[get_id(aisles[aisleIndex], sectionIndex)];
+      }
+    }
+  }
 }
 
 /* Remove at most num items from sections with the given item id, starting with
@@ -46,9 +53,39 @@ void refill_from_stockroom() {
  * given item id to finish fulfilling an order. If the stockroom runs out of
  * items, you should remove as many items as possible.
  */
-int fulfill_order(unsigned short id, int num) {
-  // TODO: implement this function
-  return 0;
+int fulfill_order(unsigned short product_id, int quantity_requested) {
+  if (quantity_requested <= 0) {
+    return 0; 
+  }
+
+  int fulfilled_quantity = 0;
+
+  for (int aisle = 0; aisle < NUM_AISLES; aisle++) {
+    for (int section = 0; section < SECTIONS_PER_AISLE; section++) {
+      if (get_id(aisles[aisle], section) == product_id) {
+        while (num_items(aisles[aisle], section) > 0 && fulfilled_quantity < quantity_requested) {
+          aisles[aisle] = remove_items(aisles[aisle], section, 1);
+          fulfilled_quantity++;
+          if (fulfilled_quantity == quantity_requested) {
+            return quantity_requested;
+          }
+        }
+      }
+    }
+  }
+
+  int remaining_quantity = quantity_requested - fulfilled_quantity;
+  if (stockroom[product_id] > 0 && remaining_quantity > 0) {
+    if (stockroom[product_id] >= remaining_quantity) {
+      stockroom[product_id] -= remaining_quantity;
+      fulfilled_quantity += remaining_quantity;
+    } else {
+      fulfilled_quantity += stockroom[product_id];
+      stockroom[product_id] = 0;
+    }
+  }
+
+  return fulfilled_quantity; 
 }
 
 // Returns the aisle and section index of the first section with the given id 
@@ -59,6 +96,14 @@ int fulfill_order(unsigned short id, int num) {
 struct aisle_section empty_section_with_id(unsigned short id) {
 //TODO: implement this function
   struct aisle_section result = {-1,-1};
+  for (int i = 0; i < NUM_AISLES; i++) {
+    for (int j = 0; j < SECTIONS_PER_AISLE; j++) {
+      if(get_id(aisles[i], j) == id && num_items(aisles[i], j) == 0) {
+        struct aisle_section temp = {i, j};
+        return temp;
+      }
+    }
+  }
   return result;
 }
 
@@ -67,6 +112,21 @@ struct aisle_section empty_section_with_id(unsigned short id) {
 // Breaks ties by returning the section with the lowest aisle index then section index.
 struct aisle_section section_with_most_items() {
 //TODO: implement this function
-  struct aisle_section result = {-1,-1};
+  //struct aisle_section result = {-1,-1};
+  int aisle_index = 0;
+  int section_index = 0;
+  for (int i = 0; i < NUM_AISLES; i++) {
+    for (int j = 0; j < SECTIONS_PER_AISLE; j++) {
+      if(num_items(aisles[aisle_index], section_index) < num_items(aisles[i], j)) {
+        aisle_index = i;
+        section_index = j;
+        if(num_items(aisles[aisle_index], section_index) == 10) {
+          struct aisle_section resultMax = {aisle_index, section_index};
+          return resultMax;
+        }
+      }
+    }
+  }
+  struct aisle_section result = {aisle_index, section_index};
   return result;
 }
