@@ -1,0 +1,4 @@
+During this assignment Avi and I worked through the thought process behind all of the code together in Perkins, and 
+each did the actual code for one section of the project. Avi wrote the code for asile manager and I wrote the code for store
+manager but we each sat with eachother and helped eachother work through each of our sections and answer questions 
+and made sure that we understood what we were doing in each part of the assignment.
